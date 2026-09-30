@@ -22,8 +22,8 @@ SMS izni olmayan, rehber eşleşmesi bulunamayan veya komutu kesin ayrıştıram
 Android Studio kurmadan GitHub Actions ile APK oluşturabilirsin:
 
 1. Bu projenin içindeki dosyaları GitHub deposuna yükle. `.github/workflows/android-apk.yml` dosyası da depoya eklenmiş olmalı.
-2. GitHub deposunda **Actions** sekmesine gir. İlk kullanımda GitHub Actions'ı etkinleştirmen istenirse etkinleştir.
-3. `Android APK` iş akışının başarılı olmasını bekle. Kaynak dosyalarını `main` veya `master` dalına yüklediğinde otomatik başlar; daha sonra **Run workflow** ile de elle başlatabilirsin.
+2. GitHub deposunda **Actions** sekmesine gir. `.github/workflows` altındaki yalnızca **Android APK** iş akışının kullanılmasını sağla; projedeki başka bir Android workflow'u Java 11 ile `./gradlew build` çalıştırıyorsa onu düzelt veya kaldır. Android Gradle Plugin 8.7.3, Java 17 ister.
+3. `Android APK` iş akışının başarılı olmasını bekle. Kaynak dosyalarını `main` veya `master` dalına yüklediğinde otomatik başlar; daha sonra **Run workflow** ile de elle başlatabilirsin. Actions logunda **Verify Java version** adımının Java 17 gösterdiğini doğrula.
 4. Tamamlanan çalışmayı aç. **Artifacts** bölümündeki `kara-delik-asistan-debug-apk` dosyasını indir.
 5. İndirilen ZIP'i açıp `app-debug.apk` dosyasını bul. APK'yi telefona gönder veya GitHub'ı telefonda açıp artifact ZIP'ini indir.
 6. Telefonda APK dosyasına dokun. Android'in istediği durumda tarayıcı veya Dosyalar uygulaması için **Bu kaynaktan uygulama yüklemeye izin ver** seçeneğini aç, sonra kurulumu tamamla.
