@@ -7,6 +7,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
@@ -29,14 +31,17 @@ public final class VoiceCaptureActivity extends Activity {
     private TextToSpeech textToSpeech;
     private boolean ttsReady;
     private String pendingSpeech;
+    private boolean wakeSession;
+    private boolean finishing;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    protected void onCreate(Bundle state) {
+        super.onCreate(state);
         setContentView(buildScreen());
-        textToSpeech = new TextToSpeech(this, status -> {
-            if (status == TextToSpeech.SUCCESS) {
+        textToSpeech = new TextToSpeech(this, result -> {
+            if (result == TextToSpeech.SUCCESS) {
                 int language = textToSpeech.setLanguage(new Locale("tr", "TR"));
                 ttsReady = language != TextToSpeech.LANG_MISSING_DATA
                         && language != TextToSpeech.LANG_NOT_SUPPORTED;
@@ -46,16 +51,25 @@ public final class VoiceCaptureActivity extends Activity {
                 }
             }
         });
-        beginRecognition();
+        handleLaunchIntent(getIntent());
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-        if (textToSpeech != null) {
-            textToSpeech.stop();
+        setIntent(intent);
+        if (textToSpeech != null) textToSpeech.stop();
+        handleLaunchIntent(intent);
+    }
+
+    private void handleLaunchIntent(Intent intent) {
+        wakeSession = intent.getBooleanExtra(FloatingAssistantService.EXTRA_WAKE_SESSION, false);
+        String spoken = intent.getStringExtra(FloatingAssistantService.EXTRA_INITIAL_SPOKEN_TEXT);
+        if (spoken == null || spoken.trim().isEmpty()) {
+            beginRecognition();
+        } else {
+            handleRecognizedText(spoken);
         }
-        beginRecognition();
     }
 
     private View buildScreen() {
@@ -63,10 +77,10 @@ public final class VoiceCaptureActivity extends Activity {
         page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(dp(24), dp(24), dp(24), dp(24));
         page.setBackgroundColor(0xFF0B1020);
-
-        TextView title = text("Seni dinliyorum", 24, Color.WHITE, Typeface.BOLD);
+        TextView title = text("Hey Asistan", 24, Color.WHITE, Typeface.BOLD);
         page.addView(title);
-        TextView hint = text("Konuşma bittikten sonra yanıt hazırlayacağım.", 14, 0xFFADB8D2, Typeface.NORMAL);
+        TextView hint = text("Sohbet açıkken uyandırma duraklatılır. Kapatınca yeniden dinler.",
+                14, 0xFFADB8D2, Typeface.NORMAL);
         LinearLayout.LayoutParams hintParams = wrap();
         hintParams.topMargin = dp(8);
         page.addView(hint, hintParams);
@@ -86,19 +100,15 @@ public final class VoiceCaptureActivity extends Activity {
         scrollParams.topMargin = dp(18);
         page.addView(scroll, scrollParams);
 
-        TextView listenAgain = text("Tekrar konuş", 16, 0xFF70E7FF, Typeface.BOLD);
-        listenAgain.setGravity(Gravity.CENTER);
-        listenAgain.setPadding(dp(16), dp(14), dp(16), dp(14));
-        listenAgain.setOnClickListener(view -> {
-            if (textToSpeech != null) {
-                textToSpeech.stop();
-            }
+        TextView listen = text("Tekrar konuş", 16, 0xFF70E7FF, Typeface.BOLD);
+        listen.setGravity(Gravity.CENTER);
+        listen.setPadding(dp(16), dp(14), dp(16), dp(14));
+        listen.setOnClickListener(view -> {
+            if (textToSpeech != null) textToSpeech.stop();
             answerView.setText("");
-            transcriptView.setText("Mikrofon hazırlanıyor…");
             beginRecognition();
         });
-        page.addView(listenAgain, wrap());
-
+        page.addView(listen, wrap());
         TextView close = text("Kapat", 16, 0xFF70E7FF, Typeface.BOLD);
         close.setGravity(Gravity.CENTER);
         close.setPadding(dp(16), dp(14), dp(16), dp(14));
@@ -113,7 +123,7 @@ public final class VoiceCaptureActivity extends Activity {
             recognizer = null;
         }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            transcriptView.setText("Mikrofon izni yok. Uygulamayı açıp izni ver.");
+            transcriptView.setText("Mikrofon izni yok. Asistan uygulamasını açıp izin ver.");
             return;
         }
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
@@ -132,12 +142,12 @@ public final class VoiceCaptureActivity extends Activity {
                 transcriptView.setText("Ses tanınamadı (" + error + "). Tekrar konuş'a basıp yeniden dene.");
             }
             @Override public void onResults(Bundle results) {
-                ArrayList<String> alternatives = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                if (alternatives == null || alternatives.isEmpty()) {
+                ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                if (matches == null || matches.isEmpty()) {
                     transcriptView.setText("Konuşma anlaşılamadı. Tekrar konuş'a basıp yeniden dene.");
                     return;
                 }
-                handleRecognizedText(alternatives.get(0));
+                handleRecognizedText(matches.get(0));
             }
             @Override public void onPartialResults(Bundle partialResults) { }
             @Override public void onEvent(int eventType, Bundle params) { }
@@ -154,9 +164,9 @@ public final class VoiceCaptureActivity extends Activity {
         transcriptView.setText("Sen: " + spoken);
         if (CommandRouter.tryRun(this, spoken, answerView)) {
             speak(answerView.getText().toString());
+            if (wakeSession) mainHandler.postDelayed(this::finish, 5000);
             return;
         }
-
         answerView.setText("Yanıt hazırlanıyor…");
         executor.execute(() -> {
             try {
@@ -174,23 +184,27 @@ public final class VoiceCaptureActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (recognizer != null) {
-            recognizer.destroy();
-        }
+        finishing = true;
+        if (recognizer != null) recognizer.destroy();
         if (textToSpeech != null) {
             textToSpeech.stop();
             textToSpeech.shutdown();
         }
+        mainHandler.removeCallbacksAndMessages(null);
         executor.shutdownNow();
+        if (!isChangingConfigurations()
+                && getSharedPreferences("assistant_settings", MODE_PRIVATE)
+                .getBoolean("assistant_enabled", false)) {
+            Intent resume = new Intent(this, FloatingAssistantService.class);
+            resume.setAction(FloatingAssistantService.ACTION_RESUME_WAKE_WORD);
+            startService(resume);
+        }
         super.onDestroy();
     }
 
     private void speak(String message) {
-        if (ttsReady) {
-            textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null, "assistant-reply");
-        } else {
-            pendingSpeech = message;
-        }
+        if (ttsReady) textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null, "assistant-reply");
+        else pendingSpeech = message;
     }
 
     private TextView text(String value, float size, int color, int style) {
