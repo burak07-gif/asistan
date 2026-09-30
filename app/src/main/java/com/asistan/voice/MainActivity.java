@@ -54,8 +54,11 @@ public final class MainActivity extends Activity {
                 "“Hey Asistan” uyandırması için başlat düğmesine bas. Başladıktan sonra " +
                 "mikrofon açık kalır ve kalıcı bildirim görünür; ses tanıma telefonundaki " +
                 "Android hizmetini kullanır ve ağ üzerinden ses işleyebilir. Sohbet metni " +
-                "ücretsiz Pollinations hizmetine gönderilir. Açık SMS komutları cihazında " +
-                "işlenir. WhatsApp ve Telegram taslağı açılır; gönderme için sen onay verirsin.",
+                "ücretsiz Pollinations hizmetine gönderilir. Ekran kontrolünü açmak için " +
+                "aşağıdaki düğmeyle Android Erişilebilirlik ayarlarına git. Bu izin ekrandaki " +
+                "yazıları okuyup düğmelere dokunmaya ve metin alanlarına yazmaya yarar; " +
+                "ekran içeriği cihazda kalır. Parola alanlarına yazmaz; mesaj gönderme, " +
+                "silme ve ödeme gibi son adımları otomatik yapmaz.",
                 15, 0xFFD6DCEF, Typeface.NORMAL);
         details.setPadding(dp(16), dp(16), dp(16), dp(16));
         details.setBackground(rounded(0x332B3A5B, dp(18)));
@@ -72,6 +75,23 @@ public final class MainActivity extends Activity {
         LinearLayout.LayoutParams startParams = matchWrap();
         startParams.topMargin = dp(12);
         content.addView(start, startParams);
+
+        Button accessibility = button("Ekran kontrolünü aç (Erişilebilirlik)");
+        accessibility.setOnClickListener(view ->
+                startActivity(new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)));
+        LinearLayout.LayoutParams accessibilityParams = matchWrap();
+        accessibilityParams.topMargin = dp(10);
+        content.addView(accessibility, accessibilityParams);
+
+        TextView examples = text(
+                "Örnekler: “YouTube’u aç”, “google.com’a gir”, “arama kutusuna kediler yaz”, " +
+                "“Giriş düğmesine tıkla”, “aşağı kaydır”, “geri git”.",
+                14, 0xFFD6DCEF, Typeface.NORMAL);
+        examples.setPadding(dp(14), dp(12), dp(14), dp(12));
+        LinearLayout.LayoutParams examplesParams = matchWrap();
+        examplesParams.topMargin = dp(8);
+        content.addView(examples, examplesParams);
+
         Button stop = button("Asistanı durdur");
         stop.setOnClickListener(view -> {
             getSharedPreferences(PREFERENCES, MODE_PRIVATE).edit().putBoolean(PREF_ENABLED, false).apply();
