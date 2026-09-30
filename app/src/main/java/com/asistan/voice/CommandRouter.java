@@ -2,26 +2,39 @@ package com.asistan.voice;
 
 import android.Manifest;
 import android.app.Activity;
-import android.content.Intent;
 import android.content.ActivityNotFoundException;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.net.Uri;
 import android.telephony.SmsManager;
 import android.widget.TextView;
 
+import java.text.Normalizer;
 import java.util.Locale;
 
 final class CommandRouter {
+    private static final java.util.regex.Pattern WEBSITE = java.util.regex.Pattern.compile(
+            "(?i)(?:https?://)?(?:www\\.)?[a-z0-9](?:[a-z0-9-]*[a-z0-9])?" +
+                    "(?:\\.[a-z0-9-]+)+(?:/[^\\s]*)?");
+
     private CommandRouter() { }
 
     static boolean tryRun(Activity activity, String spoken, TextView result) {
         String lower = spoken.toLowerCase(new Locale("tr", "TR"));
+        if (tryOpenWebsite(activity, spoken, lower, result)) {
+            return true;
+        }
         if (lower.contains("google") && containsAny(lower, "gir", "aç", "git", "ara")) {
             openGoogle(activity, lower);
-            result.setText("Google açılıyor.");
+            result.setText(lower.contains("ara") ? "Google araması açılıyor." : "Google açılıyor.");
             return true;
         }
 
+        if (!SmsCommand.hasExplicitSendIntent(lower)
+                && tryOpenInstalledApp(activity, spoken, lower, result)) {
+            return true;
+        }
         if (!SmsCommand.hasExplicitSendIntent(lower)) {
             return false;
         }
@@ -47,7 +60,6 @@ final class CommandRouter {
                     : "WhatsApp açılamadı; SMS gönderilmedi.");
             return true;
         }
-
         if (lower.contains("telegram")) {
             boolean opened = openTelegramDraft(activity, request.message);
             result.setText(opened
@@ -55,7 +67,6 @@ final class CommandRouter {
                     : "Telegram açılamadı; SMS gönderilmedi.");
             return true;
         }
-
         if (containsAny(lower, "signal", "instagram", "messenger", "discord", "viber")) {
             result.setText("Bu mesajlaşma uygulamasına otomatik gönderim desteklenmiyor; SMS gönderilmedi.");
             return true;
@@ -89,8 +100,9 @@ final class CommandRouter {
     }
 
     private static void openGoogle(Activity activity, String spoken) {
-        if (spoken.contains(" ara ")) {
-            String query = spoken.substring(spoken.indexOf(" ara ") + 5).trim();
+        int searchIndex = spoken.lastIndexOf(" ara ");
+        if (searchIndex >= 0) {
+            String query = spoken.substring(searchIndex + 5).trim();
             Intent search = new Intent(Intent.ACTION_WEB_SEARCH);
             search.putExtra("query", query);
             try {
@@ -108,6 +120,94 @@ final class CommandRouter {
             activity.startActivity(new Intent(
                     Intent.ACTION_VIEW, Uri.parse("https://www.google.com")));
         }
+    }
+
+    private static boolean tryOpenWebsite(
+            Activity activity, String spoken, String lower, TextView result) {
+        boolean navigationRequest = containsAny(lower, "gir", "git", "aç", "ziyaret et");
+        if (!navigationRequest) {
+            return false;
+        }
+
+        java.util.regex.Matcher matcher = WEBSITE.matcher(spoken);
+        if (!matcher.find()) {
+            if (lower.contains("google") && lower.contains("site")) {
+                result.setText("Site adresini anlayamadım. Örnek: “Hey Asistan, google.com'a gir.”");
+                return true;
+            }
+            return false;
+        }
+
+        String address = matcher.group();
+        if (address.startsWith("http://") || address.startsWith("https://")) {
+            address = address.replaceAll("[,.;!?]+$", "");
+        }
+        if (!address.startsWith("http://") && !address.startsWith("https://")) {
+            address = "https://" + address;
+        }
+        try {
+            Intent open = new Intent(Intent.ACTION_VIEW, Uri.parse(address));
+            activity.startActivity(open);
+            result.setText(address + " açılıyor.");
+        } catch (ActivityNotFoundException | SecurityException error) {
+            result.setText("Bu siteyi açacak bir tarayıcı bulunamadı: " + address);
+        }
+        return true;
+    }
+
+    private static boolean tryOpenInstalledApp(
+            Activity activity, String spoken, String lower, TextView result) {
+        if (!containsAny(lower, "aç", "başlat", "çalıştır", "gir")
+                || containsAny(lower, "mesaj", "sms")) {
+            return false;
+        }
+
+        String command = normalize(spoken);
+        Intent launcherQuery = new Intent(Intent.ACTION_MAIN);
+        launcherQuery.addCategory(Intent.CATEGORY_LAUNCHER);
+        java.util.List<ResolveInfo> launchers = activity.getPackageManager()
+                .queryIntentActivities(launcherQuery, 0);
+
+        String selectedPackage = null;
+        String selectedLabel = null;
+        for (ResolveInfo launcher : launchers) {
+            if (launcher.activityInfo == null || launcher.activityInfo.packageName == null) {
+                continue;
+            }
+            CharSequence label = launcher.loadLabel(activity.getPackageManager());
+            String appLabel = normalize(label == null ? "" : label.toString());
+            if (appLabel.length() < 3 || !command.contains(appLabel)) {
+                continue;
+            }
+            if (selectedPackage != null && !selectedPackage.equals(launcher.activityInfo.packageName)) {
+                result.setText("Bu uygulama adı birden fazla uygulamayla eşleşti; hiçbir uygulama açılmadı.");
+                return true;
+            }
+            selectedPackage = launcher.activityInfo.packageName;
+            selectedLabel = label == null ? selectedPackage : label.toString();
+        }
+
+        if (selectedPackage == null) {
+            return false;
+        }
+        Intent launch = activity.getPackageManager().getLaunchIntentForPackage(selectedPackage);
+        if (launch == null) {
+            result.setText(selectedLabel + " uygulamasını başlatacak ekran bulunamadı.");
+            return true;
+        }
+        try {
+            activity.startActivity(launch);
+            result.setText(selectedLabel + " açılıyor.");
+        } catch (ActivityNotFoundException | SecurityException error) {
+            result.setText(selectedLabel + " açılamadı.");
+        }
+        return true;
+    }
+
+    private static String normalize(String value) {
+        return Normalizer.normalize(value.toLowerCase(new Locale("tr", "TR")), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replaceAll("[^a-z0-9]", "");
     }
 
     private static boolean openSmsDraft(Activity activity, String phone, String message) {
