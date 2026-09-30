@@ -1,41 +1,28 @@
 # Kara Delik Asistan
 
-Android için, ekranda sürüklenebilen animasyonlu bir kara delik balonu ve Türkçe sesli sohbet örneği.
+Android için kayan kara delik balonu, Türkçe sesli sohbet ve sesli uygulama komutları.
 
-## Neler yapar?
+## Sesli komutlar
 
-- Balon, kullanıcı başlattığında kayan pencere olarak açık kalır; bildirimdeki **Durdur** eylemiyle kapanır.
-- Mikrofon sürekli açık değildir. Ses tanıma yalnızca balona dokununca başlar.
-- “Google'ı aç” Google uygulamasını, yoksa web sayfasını açar.
-- “Ahmet'e şu mesajı gönder: Yarın görüşelim” biçimindeki açık komut, rehberde tek bir eşleşme bulur ve SMS izni verilmişse SMS'i gönderir.
-- WhatsApp için numara ve metin içeren taslak açılır; Telegram için paylaşım ekranı açılır. Her ikisinde de gönderme kullanıcı onayı gerektirir.
-- Diğer sohbet soruları `openai-fast` modeliyle Pollinations'ın herkese açık uç noktasına gönderilir ve Türkçe sesle okunur. API anahtarı gerekmez; internet ve hizmetin kullanılabilir olması gerekir.
+- “Hey Asistan” ile konuşmayı başlat; bu özellik uygulama içinden asistanı başlattıktan sonra mikrofon ve görünür bildirimle çalışır.
+- “YouTube'u aç”, “Chrome'u aç” veya “google.com'a gir” diyerek yüklü uygulama ya da site aç.
+- Ekran kontrolü iznini açtıktan sonra “arama kutusuna kediler yaz”, “Giriş düğmesine tıkla”, “aşağı kaydır” ve “geri git” komutlarıyla görünen kontrolleri kullan.
+- “Ahmet'e şu mesajı gönder: Yarın görüşelim” komutu, izin ve tekil rehber eşleşmesi varsa SMS gönderir. WhatsApp/Telegram mesajları gönderim onayı gerektirir.
+- Sohbet soruları internet üzerinden Pollinations'ın ücretsiz uç noktasına iletilir; API anahtarı gerekmez.
 
-## Gizlilik ve Android izinleri
+## Ekran kontrolünü açma
 
-Uygulama balon için “diğer uygulamaların üzerinde gösterme”, ses tanıma için mikrofon, kişi adıyla SMS için rehber ve otomatik SMS için SMS izni ister. Ses tanımayı Android'in seçili tanıma hizmeti yapar; hizmet sağlayıcısına göre ağ kullanabilir. Sohbet yanıtı almak için ses tanımanın metin çıktısı Pollinations hizmetine gönderilir. SMS komutları yapay zekâ hizmetine gönderilmeden cihazda ayrıştırılır. Uygulama sürekli mikrofon dinlemez.
+Uygulamayı başlat, **Ekran kontrolünü aç (Erişilebilirlik)** düğmesine dokun, Android Erişilebilirlik ayarlarında **Kara Delik Asistan ekran kontrolü** hizmetini kendin etkinleştir. Bu izin ekrandaki erişilebilirlik metinlerini okumaya, düğmelere dokunmaya ve alanlara metin yazmaya olanak verir. Ekran içeriği uygulama tarafından kaydedilmez veya sohbet hizmetine gönderilmez. Parola alanlarına yazmaz; mesaj gönderme, silme ve ödeme gibi son adımlara otomatik basmaz. Bazı uygulamalar ekran kontrollerini erişilebilir hâle getirmediği için her öğe üzerinde çalışmayabilir.
 
-SMS izni olmayan, rehber eşleşmesi bulunamayan veya komutu kesin ayrıştıramayan durumlarda SMS otomatik gönderilmez. Bu ilk sürüm, uygulama mağazasında yayınlanmadan önce SMS ve özel foreground-service izinleri bakımından ilgili mağaza politikalarına göre ayrıca değerlendirilmelidir.
+## Gizlilik ve izinler
 
-## APK oluşturma ve telefona yükleme
+Kayan balon için diğer uygulamaların üzerinde gösterme, uyandırma için mikrofon ve durum bildirimi izinleri gerekir. Ses tanıma Android'in seçili hizmetini kullanır ve çevrimdışı çalışma garanti edilmez. Sohbet yanıtı için tanınan metin Pollinations hizmetine gönderilir. Mikrofonu kalıcı bildirimdeki **Durdur** düğmesiyle kapatabilirsin.
 
-Android Studio kurmadan GitHub Actions ile APK oluşturabilirsin:
+## APK oluşturma ve yükleme
 
-1. Bu projenin içindeki dosyaları GitHub deposuna yükle. `.github/workflows/android-apk.yml` dosyası da depoya eklenmiş olmalı.
-2. GitHub deposunda **Actions** sekmesine gir. `.github/workflows` altındaki yalnızca **Android APK** iş akışının kullanılmasını sağla; projedeki başka bir Android workflow'u Java 11 ile `./gradlew build` çalıştırıyorsa onu düzelt veya kaldır. Android Gradle Plugin 8.7.3, Java 17 ister.
-3. `Android APK` iş akışının başarılı olmasını bekle. Kaynak dosyalarını `main` veya `master` dalına yüklediğinde otomatik başlar; daha sonra **Run workflow** ile de elle başlatabilirsin. Actions logunda **Verify Java version** adımının Java 17 gösterdiğini doğrula.
-4. Tamamlanan çalışmayı aç. **Artifacts** bölümündeki `kara-delik-asistan-debug-apk` dosyasını indir.
-5. İndirilen ZIP'i açıp `app-debug.apk` dosyasını bul. APK'yi telefona gönder veya GitHub'ı telefonda açıp artifact ZIP'ini indir.
-6. Telefonda APK dosyasına dokun. Android'in istediği durumda tarayıcı veya Dosyalar uygulaması için **Bu kaynaktan uygulama yüklemeye izin ver** seçeneğini aç, sonra kurulumu tamamla.
+1. Depoda **Actions** sekmesini aç ve **Android APK** iş akışının başarıyla tamamlanmasını bekle.
+2. Başarılı çalışmayı açıp **Artifacts** bölümünden `kara-delik-asistan-debug-apk` ZIP'ini indir.
+3. ZIP'i açıp `app-debug.apk` dosyasını telefona yükle. Android sorarsa Dosyalar/tarayıcı için bu kaynaktan uygulama yüklemeye izin ver.
+4. Uygulamayı aç; balon ve mikrofon izinlerini ver. Ekran komutları için yukarıdaki Erişilebilirlik iznini ayrıca etkinleştir.
 
-GitHub artifact'i 14 gün saklar. APK yükleme/saklama için telefonunda ya da bilgisayarında Android Studio kurulması gerekmez. İlk derleme başarısız olursa GitHub'daki Actions çalışmasının hata ayrıntısını kontrol et.
-
-## Yerelde derleme
-
-Android Studio'da bu klasörü açıp Android SDK 35 ile çalıştır. Komut satırı derlemesi için JDK 17 ve Android SDK 35 gerekir. Windows PowerShell'de:
-
-```text
-.\gradlew.bat assembleDebug
-```
-
-İlk açılışta kayan balon iznini ve ihtiyaç duyduğun mikrofon/rehber/SMS izinlerini ver. SMS'i otomatik göndermek için SMS izni gereklidir; rehberde aynı ada ait birden fazla farklı numara varsa hiçbir mesaj gönderilmez.
+Yerel derleme için JDK 17 ve Android SDK 35 gerekir: `gradlew.bat assembleDebug`.
