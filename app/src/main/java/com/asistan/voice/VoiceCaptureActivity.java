@@ -164,6 +164,10 @@ public final class VoiceCaptureActivity extends Activity {
         transcriptView.setText("Sen: " + spoken);
         if (CommandRouter.tryRun(this, spoken, answerView)) {
             speak(answerView.getText().toString());
+            if (AccessibilityCommandService.hasPendingAction()) {
+                mainHandler.postDelayed(this::finish, 1500);
+                return;
+            }
             if (wakeSession) mainHandler.postDelayed(this::finish, 5000);
             return;
         }
@@ -192,7 +196,8 @@ public final class VoiceCaptureActivity extends Activity {
         }
         mainHandler.removeCallbacksAndMessages(null);
         executor.shutdownNow();
-        if (!isChangingConfigurations()
+        if (!AccessibilityCommandService.hasPendingAction()
+                && !isChangingConfigurations()
                 && getSharedPreferences("assistant_settings", MODE_PRIVATE)
                 .getBoolean("assistant_enabled", false)) {
             Intent resume = new Intent(this, FloatingAssistantService.class);
