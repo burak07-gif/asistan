@@ -31,7 +31,7 @@ public final class FloatingAssistantService extends Service {
     private static final int NOTIFICATION_ID = 51;
     static final String ACTION_STOP = "com.asistan.voice.STOP";
     static final String ACTION_RESUME_WAKE_WORD = "com.asistan.voice.RESUME_WAKE_WORD";
-    static final String EXTRA_INITIAL_SPOKEN_TEXT = "com.asistan.voice.INITIAL_SPOKEN_TEXT";
+    static final String EXTRA_INITIAL_SPOKEN_TEXT = "com.asistan.voice.INITIAL_SPOKEN_TEXT"; static final String EXTRA_WAKE_SESSION = "com.asistan.voice.WAKE_SESSION";
     private static final String PREFERENCES = "assistant_settings";
     private static final String PREF_ENABLED = "assistant_enabled";
     private static final Pattern WAKE_WORD = Pattern.compile(
@@ -125,7 +125,7 @@ public final class FloatingAssistantService extends Service {
                     if (!orb.wasDragged()) {
                         pauseWakeWordListening();
                         Intent open = new Intent(this, VoiceCaptureActivity.class);
-                        open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                        open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP); open.putExtra(EXTRA_WAKE_SESSION, true);
                         startActivity(open);
                     }
                     orb.finishDrag();
@@ -222,7 +222,7 @@ public final class FloatingAssistantService extends Service {
         updateNotification("Hey Asistan uyandı. Dinleme, sohbet ekranı kapanınca sürer.");
 
         Intent open = new Intent(this, VoiceCaptureActivity.class);
-        open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP); open.putExtra(EXTRA_WAKE_SESSION, true);
         if (!command.isEmpty()) {
             open.putExtra(EXTRA_INITIAL_SPOKEN_TEXT, command);
         }
