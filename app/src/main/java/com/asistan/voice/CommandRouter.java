@@ -36,6 +36,11 @@ final class CommandRouter {
             return true;
         }
         if (!SmsCommand.hasExplicitSendIntent(lower)) {
+                        String accessibilityResult = AccessibilityCommandService.handleVoiceCommand(spoken);
+                        if (accessibilityResult != null) {
+                                            result.setText(accessibilityResult);
+                                            return true;
+                        }
             return false;
         }
 
