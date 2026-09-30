@@ -18,15 +18,19 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+
 public final class MainActivity extends Activity {
     private static final int REQUEST_OVERLAY = 100;
     private static final int REQUEST_PERMISSIONS = 101;
+    private static final String PREFERENCES = "assistant_settings";
+    private static final String PREF_ENABLED = "assistant_enabled";
     private boolean startWhenReady;
     private TextView status;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
+    protected void onCreate(Bundle state) {
+        super.onCreate(state);
         setContentView(buildScreen());
     }
 
@@ -34,68 +38,49 @@ public final class MainActivity extends Activity {
         LinearLayout page = new LinearLayout(this);
         page.setOrientation(LinearLayout.VERTICAL);
         page.setPadding(dp(24), dp(32), dp(24), dp(24));
-        page.setBackground(new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[]{Color.rgb(11, 16, 32), Color.rgb(20, 29, 53), Color.rgb(10, 12, 25)}));
-
+        page.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+                new int[]{0xFF0B1020, 0xFF141D35, 0xFF0A0C19}));
         ScrollView scroll = new ScrollView(this);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setGravity(Gravity.CENTER_HORIZONTAL);
-
         TextView emblem = text("◉", 58, 0xFF70E7FF, Typeface.BOLD);
         emblem.setGravity(Gravity.CENTER);
         content.addView(emblem, matchWrap());
-
         TextView title = text("Kara Delik Asistan", 27, Color.WHITE, Typeface.BOLD);
         title.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams titleParams = matchWrap();
-        titleParams.topMargin = dp(8);
-        content.addView(title, titleParams);
-
-        TextView subtitle = text(
-                "Sesli sohbet, Google'a gitme ve izin verdiğinde SMS gönderme.",
-                16, 0xFFC4CBE0, Typeface.NORMAL);
-        subtitle.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams subtitleParams = matchWrap();
-        subtitleParams.topMargin = dp(12);
-        subtitleParams.bottomMargin = dp(20);
-        content.addView(subtitle, subtitleParams);
-
+        content.addView(title, matchWrap());
         TextView details = text(
-                "Kullanmak için balona dokun: mikrofon sürekli dinlemez. " +
-                "Ses tanımayı telefonundaki Android hizmeti sağlar; bu hizmet ağ kullanabilir. " +
-                "Sohbet yanıtı almak için söylediğin metin ücretsiz, anahtarsız " +
-                "Pollinations hizmetine internet üzerinden gönderilir. " +
-                "SMS komutları cihazında işlenir; otomatik gönderim için SMS ve " +
-                "rehber izinlerini vermen gerekir. Diğer mesajlaşma uygulamalarında " +
-                "gönderim senin onayına bırakılır.",
-                14, 0xFFD6DCEF, Typeface.NORMAL);
+                "“Hey Asistan” uyandırması için başlat düğmesine bas. Başladıktan sonra " +
+                "mikrofon açık kalır ve kalıcı bildirim görünür; ses tanıma telefonundaki " +
+                "Android hizmetini kullanır ve ağ üzerinden ses işleyebilir. Sohbet metni " +
+                "ücretsiz Pollinations hizmetine gönderilir. Açık SMS komutları cihazında " +
+                "işlenir. WhatsApp ve Telegram taslağı açılır; gönderme için sen onay verirsin.",
+                15, 0xFFD6DCEF, Typeface.NORMAL);
         details.setPadding(dp(16), dp(16), dp(16), dp(16));
         details.setBackground(rounded(0x332B3A5B, dp(18)));
-        content.addView(details, matchWrap());
-
+        LinearLayout.LayoutParams detailsParams = matchWrap();
+        detailsParams.topMargin = dp(18);
+        content.addView(details, detailsParams);
         status = text("Asistan henüz başlatılmadı.", 14, 0xFF9DAAC8, Typeface.NORMAL);
         status.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams statusParams = matchWrap();
         statusParams.topMargin = dp(22);
         content.addView(status, statusParams);
-
-        Button start = button("Kara delik balonunu başlat");
+        Button start = button("Balonu ve Hey Asistan dinlemesini başlat");
         start.setOnClickListener(view -> enableAssistant());
-        LinearLayout.LayoutParams buttonParams = matchWrap();
-        buttonParams.topMargin = dp(12);
-        content.addView(start, buttonParams);
-
-        Button stop = button("Balonu durdur");
+        LinearLayout.LayoutParams startParams = matchWrap();
+        startParams.topMargin = dp(12);
+        content.addView(start, startParams);
+        Button stop = button("Asistanı durdur");
         stop.setOnClickListener(view -> {
+            getSharedPreferences(PREFERENCES, MODE_PRIVATE).edit().putBoolean(PREF_ENABLED, false).apply();
             stopService(new Intent(this, FloatingAssistantService.class));
             status.setText("Asistan durduruldu.");
         });
         LinearLayout.LayoutParams stopParams = matchWrap();
         stopParams.topMargin = dp(10);
         content.addView(stop, stopParams);
-
         scroll.addView(content);
         page.addView(scroll, new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
@@ -105,22 +90,20 @@ public final class MainActivity extends Activity {
     private void enableAssistant() {
         if (!Settings.canDrawOverlays(this)) {
             startWhenReady = true;
-            Intent permissionScreen = new Intent(
-                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + getPackageName()));
-            startActivityForResult(permissionScreen, REQUEST_OVERLAY);
+            startActivityForResult(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName())), REQUEST_OVERLAY);
             return;
         }
-
-        if (missingRuntimePermissions().length > 0) {
-            requestPermissions(missingRuntimePermissions(), REQUEST_PERMISSIONS);
-            return;
+        String[] missing = missingPermissions();
+        if (missing.length > 0) {
+            requestPermissions(missing, REQUEST_PERMISSIONS);
+        } else {
+            startAssistantService();
         }
-        startOverlayService();
     }
 
-    private String[] missingRuntimePermissions() {
-        java.util.ArrayList<String> missing = new java.util.ArrayList<>();
+    private String[] missingPermissions() {
+        ArrayList<String> missing = new ArrayList<>();
         addIfMissing(missing, Manifest.permission.RECORD_AUDIO);
         addIfMissing(missing, Manifest.permission.SEND_SMS);
         addIfMissing(missing, Manifest.permission.READ_CONTACTS);
@@ -130,25 +113,32 @@ public final class MainActivity extends Activity {
         return missing.toArray(new String[0]);
     }
 
-    private void addIfMissing(java.util.List<String> missing, String permission) {
+    private void addIfMissing(ArrayList<String> missing, String permission) {
         if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
             missing.add(permission);
         }
     }
 
     @Override
-    public void onRequestPermissionsResult(
-            int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == REQUEST_PERMISSIONS) {
-            startOverlayService();
+    public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(code, permissions, results);
+        if (code != REQUEST_PERMISSIONS) {
+            return;
+        }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            status.setText("Hey Asistan için mikrofon izni gerekli; dinleme başlatılmadı.");
+        } else if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            status.setText("Mikrofon durumunu göstermek için bildirim izni gerekli.");
+        } else {
+            startAssistantService();
         }
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_OVERLAY && startWhenReady) {
+    protected void onActivityResult(int code, int result, Intent data) {
+        super.onActivityResult(code, result, data);
+        if (code == REQUEST_OVERLAY && startWhenReady) {
             startWhenReady = false;
             if (Settings.canDrawOverlays(this)) {
                 enableAssistant();
@@ -158,24 +148,34 @@ public final class MainActivity extends Activity {
         }
     }
 
-    private void startOverlayService() {
+    private void startAssistantService() {
         if (!Settings.canDrawOverlays(this)) {
-            status.setText("Balon izni verilmedi. Ayarlar'dan izin verip tekrar dene.");
+            status.setText("Balon izni verilmedi.");
             return;
         }
+        if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            status.setText("Mikrofon izni verilmedi; dinleme başlatılmadı.");
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            status.setText("Bildirim izni verilmedi; dinleme başlatılmadı.");
+            return;
+        }
+        getSharedPreferences(PREFERENCES, MODE_PRIVATE).edit().putBoolean(PREF_ENABLED, true).apply();
         Intent service = new Intent(this, FloatingAssistantService.class);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForegroundService(service);
         } else {
             startService(service);
         }
-        status.setText("Asistan çalışıyor. Ekranın köşesindeki kara deliğe dokun.");
+        status.setText("Hey Asistan dinliyor. Kapatmak için bildirimde Durdur'a bas.");
     }
 
     private Button button(String label) {
         Button button = new Button(this);
         button.setText(label);
-        button.setTextColor(Color.rgb(9, 15, 31));
+        button.setTextColor(0xFF090F1F);
         button.setAllCaps(false);
         button.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         button.setBackground(rounded(0xFF70E7FF, dp(16)));
@@ -183,12 +183,12 @@ public final class MainActivity extends Activity {
     }
 
     private TextView text(String value, float size, int color, int style) {
-        TextView text = new TextView(this);
-        text.setText(value);
-        text.setTextSize(size);
-        text.setTextColor(color);
-        text.setTypeface(Typeface.DEFAULT, style);
-        return text;
+        TextView view = new TextView(this);
+        view.setText(value);
+        view.setTextSize(size);
+        view.setTextColor(color);
+        view.setTypeface(Typeface.DEFAULT, style);
+        return view;
     }
 
     private GradientDrawable rounded(int color, int radius) {
