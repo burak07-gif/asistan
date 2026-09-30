@@ -29,7 +29,7 @@ public final class AccessibilityCommandService extends AccessibilityService {
                     "(?:bas|tıkla|dokun)|(?:butona\\s+bas|düğmeye\\s+bas|" +
                     "butona\\s+tıkla|düğmeye\\s+tıkla|tıkla|dokun)\\s+(.+))$");
     private static final String[] UNSAFE_ACTION_LABELS = {
-            "gonder", "send", "satinal", "purchase", "buy", "ode", "payment",
+            "gonder", "send", "satinal", "purchase", "buy", "odeme", "payment",
             "delete", "sil", "remove", "submit", "onayla", "confirm", "checkout"
     };
 
@@ -152,7 +152,7 @@ public final class AccessibilityCommandService extends AccessibilityService {
 
     private String click(AccessibilityNodeInfo root, String requestedLabel) {
         String normalizedLabel = normalize(requestedLabel);
-        if (containsAny(normalizedLabel, UNSAFE_ACTION_LABELS)) {
+        if (containsAny(normalizedLabel, UNSAFE_ACTION_LABELS) || normalizedLabel.equals("ode") || normalizedLabel.endsWith("ode")) {
             return "Mesaj gönderme, silme ve ödeme gibi son işlemleri güvenlik için otomatik tıklamıyorum.";
         }
 
