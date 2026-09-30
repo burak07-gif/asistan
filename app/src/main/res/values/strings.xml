@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Kara Delik Asistan</string>
+    <string name="accessibility_service_name">Kara Delik Asistan ekran kontrolü</string>
+    <string name="accessibility_service_description">Sesli komutla ekrandaki metin alanlarını doldurmak ve seçilen düğmelere dokunmak için kullanılır. Ekran içeriği cihazda işlenir. Parola alanlarına yazmaz ve mesaj gönderme, silme veya ödeme düğmelerine otomatik basmaz.</string>
 </resources>
